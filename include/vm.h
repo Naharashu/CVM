@@ -29,5 +29,6 @@ static void initVM();
 static void freeVM();
 static void writeHeap(uint16_t data, uint16_t addr);
 static uint16_t readHeap(uint16_t addr);
+void run();
 
 #endif
