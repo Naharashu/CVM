@@ -14,10 +14,14 @@ typedef struct VM
     uint16_t pc;
 } VM;
 
-typedef enum {
+typedef enum __attribute__((packed)){
     CVM_ASM_1_0_0 = 1,
     LOAD,
     MOV,
+    IADD,
+    ISUB,
+    IMUL,
+    IDIV,
     CMP,
     INC,
     DEC,
@@ -32,7 +36,7 @@ extern VM cvm;
 extern uint16_t* heap;
 
 #define FETCH cvm.memory[cvm.pc++]
-#define _GOTO_(addr) (cvm.memory[addr])
+#define _GOTO_(addr) (cvm.pc=addr)
 
 static void initVM();
 static void freeVM();
