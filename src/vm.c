@@ -5,6 +5,7 @@
 
 VM cvm;
 uint16_t* heap = NULL;
+uint8_t opt = 0;
 bool ZF = false;
 bool EF = false;
 
@@ -63,6 +64,17 @@ void deadcode() {
             mem[i] = 0;
         }
         */
+
+        if(i+2 < UINT16_MAX+1 && mem[i] == VOID && mem[i+1] == VOID && mem[i+2] == VOID) {
+            emit(0, i+1);
+            emit(0, i+2);
+        }
+
+        if(mem[i] == HALT && opt == 1) {
+            for(int j = i+1; j < UINT16_MAX+1; j++) {
+                if(mem[j] != 0) mem[j] = 0;
+            }
+        }
     }
     #undef mem
 }
@@ -89,6 +101,34 @@ void run() {
                 cvm.reg[r] = cvm.reg[r1];
                 goto next;
             }
+            case IADD: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 1) : 0; // ? If opt= 0 we caching last value of register in heap
+                cvm.reg[r] += imm;
+                goto next;
+            }
+            case ISUB: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 2) : 0;
+                cvm.reg[r] -= imm;
+                goto next;
+            }
+            case IMUL: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 3) : 0;
+                cvm.reg[r] *= imm;
+                goto next;
+            }
+            case IDIV: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 4) : 0;
+                cvm.reg[r] /= imm;
+                goto next;
+            }
             case CMP: {
                 uint8_t r = FETCH;
                 uint8_t r1 = FETCH;
@@ -109,7 +149,7 @@ void run() {
             case JNE: {
                 uint16_t addr = FETCH;
                 if (!EF) {
-                    cvm.pc = addr;
+                    _GOTO_(addr);
                 }
                 goto next;
             }
@@ -130,17 +170,21 @@ void run() {
 
 
 int main(int argc, char *argv[]) {
+    if(argc > 1 && strcmp(argv[1], "-O1") == 0) {
+        opt = 1;
+    }
     initVM();
     int_fast32_t memor[] = {
         LOAD, 1, 100000000,
         CMP, 0, 1,
         INC, 0, 
         JNE, 4,
-        HALT
+        HALT,
+        LOAD, 0, 10
     };
     memcpy(&cvm.memory[1], memor, sizeof(memor));
-    //deadcode();
-    bytecode("out", 0);
+    deadcode();
+    bytecode("out", (uint_fast8_t[]){0});
     run();
     printf("%d\n", cvm.reg[0]);
     freeVM();
