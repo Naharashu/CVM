@@ -84,6 +84,108 @@ void emit(uint8_t op, uint16_t addr) {
 }
 
 
+void runCALL(int limit) {
+    while(cvm.pc < limit)  {
+        int op = FETCH;
+        switch (op) {
+            case LOAD: {
+                uint8_t r = FETCH;
+                int32_t val = FETCH;
+                cvm.reg[r] = val;
+                goto next;
+            }
+            case MOV: {
+                uint8_t r = FETCH;
+                uint8_t r1 = FETCH;
+                cvm.reg[r] = cvm.reg[r1];
+                goto next;
+            }
+            case IADD: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 1) : 0; // ? If opt= 0 we caching last value of register in heap
+                cvm.reg[r] += imm;
+                goto next;
+            }
+            case ISUB: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 2) : 0;
+                cvm.reg[r] -= imm;
+                goto next;
+            }
+            case IMUL: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 3) : 0;
+                cvm.reg[r] *= imm;
+                goto next;
+            }
+            case IDIV: {
+                uint8_t r = FETCH;
+                int32_t imm = FETCH;
+                opt == 0 ? writeHeap(cvm.reg[r], 4) : 0;
+                cvm.reg[r] /= imm;
+                goto next;
+            }
+            case CMP: {
+                uint8_t r = FETCH;
+                uint8_t r1 = FETCH;
+                EF = cvm.reg[r] == cvm.reg[r1];
+                ZF = cvm.reg[r] == 0;
+                goto next;
+            }
+            case INC: {
+                uint8_t r = FETCH;
+                cvm.reg[r]++;
+                goto next;
+            }
+            case DEC: {
+                uint8_t r = FETCH;
+                cvm.reg[r]--;
+                goto next;
+            }
+            case JNE: {
+                uint16_t addr = FETCH;
+                if (!EF) {
+                    _GOTO_(addr);
+                }
+                goto next;
+            }
+            case JE: {
+                uint16_t addr = FETCH;
+                if (EF) {
+                    _GOTO_(addr);
+                }
+                goto next;
+            }
+            case JNZ: {
+                uint16_t addr = FETCH;
+                if (!ZF) {
+                    _GOTO_(addr);
+                }
+                goto next;
+            }
+            case JZ: {
+                uint16_t addr = FETCH;
+                if (ZF) {
+                    _GOTO_(addr);
+                }
+                goto next;
+            }
+            case VOID:
+                goto next;
+            case HALT:
+                return;
+
+            default:
+                printf("Unknown opcode: %d at %d\n", op, cvm.pc - 1);
+                return;
+        }
+    next:
+        continue;
+    }
+}
 
 void run() {
     for (;;) {
@@ -153,9 +255,43 @@ void run() {
                 }
                 goto next;
             }
+            case JE: {
+                uint16_t addr = FETCH;
+                if (EF) {
+                    _GOTO_(addr);
+                }
+                goto next;
+            }
+            case JNZ: {
+                uint16_t addr = FETCH;
+                if (!ZF) {
+                    _GOTO_(addr);
+                }
+                goto next;
+            }
+            case JZ: {
+                uint16_t addr = FETCH;
+                if (ZF) {
+                    _GOTO_(addr);
+                }
+                goto next;
+            }
+            case JMP: {
+                uint16_t addr = FETCH;
+                _GOTO_(addr);
+                got next;
+            }
+            case CALL: {
+                uint_fast16_t addr1 = FETCH;
+                uint_fast16_t addr2 = FETCH;
+                writeHeap(cvm.pc, 5);
+                cvm.pc = addr1;
+                runCALL(addr2);
+                cvm.pc = readHeap(5);
+                goto next;
+            }
             case VOID:
                 goto next;
-
             case HALT:
                 return;
 
@@ -175,10 +311,9 @@ int main(int argc, char *argv[]) {
     }
     initVM();
     int_fast32_t memor[] = {
-        LOAD, 1, 100000000,
-        CMP, 0, 1,
+        LOAD, 0, 1,
         INC, 0, 
-        JNE, 4,
+        CALL, 4, 6,
         HALT,
         LOAD, 0, 10
     };
