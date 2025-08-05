@@ -26,6 +26,11 @@ typedef enum __attribute__((packed)){
     INC,
     DEC,
     JNE,
+    JE,
+    JNZ,
+    JZ,
+    JMP,
+    CALL,
     VOID,
     HALT
 } opcodes;
