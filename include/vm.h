@@ -14,6 +14,11 @@ typedef struct VM
     uint16_t pc;
 } VM;
 
+typedef struct stack16 {
+    uint16_t* stack;
+    uint8_t sp;
+} stack16;
+
 typedef enum __attribute__((packed)){
     CVM_ASM_1_0_0 = 1,
     LOAD,
@@ -38,6 +43,7 @@ typedef enum __attribute__((packed)){
 
 
 extern VM cvm;
+extern stack16 call_stack;
 extern uint16_t* heap;
 
 #define FETCH cvm.memory[cvm.pc++]
@@ -45,6 +51,8 @@ extern uint16_t* heap;
 
 static void initVM();
 static void freeVM();
+void push_call(uint8_t value);
+uint16_t pop_call();
 static void writeHeap(uint16_t data, uint16_t addr);
 static uint16_t readHeap(uint16_t addr);
 void emit(uint8_t op, uint16_t addr);

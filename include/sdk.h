@@ -4,6 +4,6 @@
 #include "vm.h"
 
 void bytecode(char* param, uint_fast8_t* params);
-
+void include(const char* filename);
 
 #endif
