@@ -4,6 +4,7 @@
 // ! Declarations
 
 VM cvm;
+stack16 call_stack;
 uint16_t* heap = NULL;
 uint8_t opt = 0;
 bool ZF = false;
@@ -14,6 +15,8 @@ bool EF = false;
 
 static void initVM() {
     cvm.memory = calloc(UINT16_MAX+1, sizeof(int_fast32_t));
+    call_stack.stack = calloc(256, sizeof(uint16_t));
+    call_stack.sp = 0;
     cvm.pc = 1;
     for (size_t i = 0; i < 16; i++)
     {
@@ -26,8 +29,20 @@ static void initVM() {
 static void freeVM() {
     free(cvm.memory);
     free(heap);
+    free(call_stack.stack);
 }
 
+// * Stack managment
+
+void push_call(uint8_t value) {
+    call_stack.stack[call_stack.sp] = value;
+    call_stack.sp++;
+}
+
+uint16_t pop_call() {
+    call_stack.sp--;
+    return call_stack.stack[call_stack.sp];
+}
 
 
 // * heap managment
@@ -43,6 +58,7 @@ static uint16_t readHeap(uint16_t addr) {
 
 // * Bytecode mamagment
 // TODO: add more bytecodes + optimizations(01.08.25)
+// TODO:  upgrade stack(09.08.25)
 // ! may be slow
 
 void deadcode() {
@@ -84,7 +100,7 @@ void emit(uint8_t op, uint16_t addr) {
 }
 
 
-void runCALL(int limit) {
+void run_CALL(int limit) {
     while(cvm.pc < limit)  {
         int op = FETCH;
         switch (op) {
@@ -171,6 +187,15 @@ void runCALL(int limit) {
                 if (ZF) {
                     _GOTO_(addr);
                 }
+                goto next;
+            }
+            case CALL: {
+                uint_fast16_t addr1 = FETCH;
+                uint_fast16_t addr2 = FETCH;
+                push_call(cvm.pc);
+                cvm.pc = addr1;
+                run_CALL(addr2);
+                cvm.pc = pop_call();
                 goto next;
             }
             case VOID:
@@ -279,22 +304,21 @@ void run() {
             case JMP: {
                 uint16_t addr = FETCH;
                 _GOTO_(addr);
-                got next;
+                goto next;
             }
             case CALL: {
                 uint_fast16_t addr1 = FETCH;
                 uint_fast16_t addr2 = FETCH;
-                writeHeap(cvm.pc, 5);
+                push_call(cvm.pc);
                 cvm.pc = addr1;
-                runCALL(addr2);
-                cvm.pc = readHeap(5);
+                run_CALL(addr2);
+                cvm.pc = pop_call();
                 goto next;
             }
             case VOID:
                 goto next;
             case HALT:
                 return;
-
             default:
                 printf("Unknown opcode: %d at %d\n", op, cvm.pc - 1);
                 return;
@@ -311,11 +335,11 @@ int main(int argc, char *argv[]) {
     }
     initVM();
     int_fast32_t memor[] = {
-        LOAD, 0, 1,
-        INC, 0, 
-        CALL, 4, 6,
-        HALT,
-        LOAD, 0, 10
+        INC, 0,
+        CALL, 1, 2,
+        CALL, 1, 2,
+        CALL, 3, 8,
+        HALT
     };
     memcpy(&cvm.memory[1], memor, sizeof(memor));
     deadcode();
